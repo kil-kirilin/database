@@ -1,5 +1,18 @@
 # database-test
 
+открыть базу данных и запустить её.
+
+# запустить backend
+```
+.\venv\Scripts\activate
+```
+```
+python app.py
+```
+открываем новый терминал и в нём запускаем фронт
+
+npm run serve
+
 ## Project setup
 ```
 npm install
