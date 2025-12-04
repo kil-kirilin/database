@@ -1,53 +1,109 @@
 <template>
   <div id="app">
-    <h1>Добавить новый материал</h1>
-    <form @submit.prevent="addItem" class="add-item-form">
-      <div class="form-group" v-for="header in headersWithoutIdAndNote" :key="header.name">
-        <label :for="header.name">{{ header.display }}:</label>
-        <input v-model="newItem[header.name]" :id="header.name" type="text" required />
-      </div>
-      <div class="form-group">
-        <label for="note">Примечание:</label>
-        <input v-model="newItem.note" id="note" type="text" />
-      </div>
-      <button type="submit">Добавить</button>
-    </form>
+    <header class="app-header">
+      <h1>📦 Учет материалов 2025</h1>
+      <p class="subtitle">Управление расходом материалов с автоматическим подсчетом</p>
+    </header>
 
-    <br /><br />
+    <main class="app-main">
+      <section class="form-section">
+        <div class="section-header">
+          <h2>Добавить материал</h2>
+        </div>
+        <form @submit.prevent="addItem" class="add-form">
+          <div class="form-grid">
+            <div class="form-group" v-for="header in headersWithoutIdAndNote" :key="header.name">
+              <label :for="header.name">{{ header.display }}</label>
+              <input 
+                v-model="newItem[header.name]" 
+                :id="header.name" 
+                type="text" 
+                :placeholder="`Введите ${header.display.toLowerCase()}`"
+                class="form-input"
+              />
+            </div>
+            <div class="form-group full-width">
+              <label for="note">Примечание</label>
+              <input 
+                v-model="newItem.note" 
+                id="note" 
+                type="text" 
+                placeholder="Дополнительная информация"
+                class="form-input"
+              />
+            </div>
+          </div>
+          <button type="submit" class="submit-btn">
+            <span class="btn-icon">✓</span>
+            Добавить материал
+          </button>
+        </form>
+      </section>
 
-    <table>
-      <caption>
-        Таблица расхода материала за 2025 год
-      </caption>
-      <thead>
-        <tr>
-          <th :key="header.display" v-for="header in headers">{{ header.display }}</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr :key="column.number" v-for="column in columns">
-          <td :key="header.name" v-for="header in headers">
-            {{ column[header.name] }}
-          </td>
-          <td>
-            <button @click="deleteItem(column.number)" class="delete-button">Удалить</button>
-          </td>
-        </tr>
-      </tbody>
-      <tfoot>
-        <tr>
-          <th scope="col"></th>
-          <th scope="col">Итоговая сумма</th>
-          <th scope="col">{{ totalQuantity }}</th>
-          <th scope="col">{{ totalMonthlyConsumption }}</th>
-          <th scope="col">{{ totalYearlyConsumption }}</th>
-          <th scope="col">{{ totalMonthlyPrice }}</th>
-          <th scope="col">{{ totalYearlyPrice }}</th>
-          <th></th>
-        </tr>
-      </tfoot>
-    </table>
+      <section class="table-section">
+        <div class="section-header">
+          <h2>Таблица расходов</h2>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th v-for="header in headers" :key="header.name" class="table-header">
+                  <span class="header-text">{{ header.display }}</span>
+                </th>
+                <th class="table-header">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="column in columns" :key="column.number" class="table-row">
+                <td v-for="header in headers" :key="header.name" class="table-cell">
+                  <span class="cell-content">{{ column[header.name] || '—' }}</span>
+                </td>
+                <td class="table-cell actions-cell">
+                  <button @click="deleteItem(column.number)" class="delete-btn">
+                    <span class="btn-icon">🗑️</span>
+                    Удалить
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="columns.length === 0" class="empty-row">
+                <td :colspan="headers.length + 1" class="empty-cell">
+                  <div class="empty-state">
+                    <span class="empty-icon">📝</span>
+                    <p>Нет данных. Добавьте первый материал.</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot class="table-footer">
+              <tr>
+                <td class="footer-label">Итого</td>
+                <td class="footer-total">—</td>
+                <td v-for="(total, index) in totals" :key="index" class="footer-total">
+                  {{ total.toLocaleString('ru-RU') }}
+                </td>
+                <td class="footer-empty"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        
+        <div class="summary-cards">
+          <div class="summary-card" v-for="(summary, index) in summaryData" :key="index">
+            <div class="card-icon">{{ summary.icon }}</div>
+            <div class="card-content">
+              <h3 class="card-title">{{ summary.title }}</h3>
+              <p class="card-value">{{ summary.value.toLocaleString('ru-RU') }} {{ summary.unit }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>© 2025 Система учета материалов • Всего записей: {{ columns.length }}</p>
+      <p class="timestamp" v-if="lastUpdate">Обновлено: {{ lastUpdate }}</p>
+    </footer>
   </div>
 </template>
 
@@ -57,16 +113,15 @@ import axios from 'axios';
 export default {
   name: 'App',
   data() {
-    console.log('Инициализация компонента App');
     return {
       headers: [
         { name: 'number', display: '№' },
         { name: 'name', display: 'Наименование' },
-        { name: 'quantity', display: 'Колличество' },
-        { name: 'monthlyConsumption', display: 'Расход за месяц' },
-        { name: 'yearlyConsumption', display: 'Расход за год' },
-        { name: 'monthlyPrice', display: 'Цена за месяц (руб)' },
-        { name: 'yearlyPrice', display: 'Цена за год (руб)' },
+        { name: 'quantity', display: 'Кол-во' },
+        { name: 'monthlyConsumption', display: 'Месяц' },
+        { name: 'yearlyConsumption', display: 'Год' },
+        { name: 'monthlyPrice', display: 'Цена/мес' },
+        { name: 'yearlyPrice', display: 'Цена/год' },
         { name: 'note', display: 'Примечание' }
       ],
       columns: [],
@@ -79,549 +134,499 @@ export default {
         monthlyPrice: '',
         yearlyPrice: '',
         note: ''
-      }
+      },
+      lastUpdate: null
     };
   },
   computed: {
-    // Вычисляемое свойство, чтобы не отображать 'note' в обязательных полях формы
     headersWithoutIdAndNote() {
-      console.log('Вычисление headersWithoutIdAndNote');
-      const filteredHeaders = [];
-      
-      for (var i = 0; i < this.headers.length; i++) {
-        var header = this.headers[i];
-        console.log(`Проверка заголовка: ${header.name} - ${header.display}`);
-        
-        if (header.name !== 'note') {
-          filteredHeaders.push(header);
-          console.log(`Добавлен заголовок: ${header.name}`);
-        }
-      }
-      
-      console.log('Итоговые заголовки без note:', filteredHeaders);
-      return filteredHeaders;
+      return this.headers.filter(header => header.name !== 'note');
     },
-    
-    // Вычисляемые свойства для итоговых сумм с использованием классического цикла for
+    totals() {
+      return [
+        this.totalQuantity,
+        this.totalMonthlyConsumption,
+        this.totalYearlyConsumption,
+        this.totalMonthlyPrice,
+        this.totalYearlyPrice
+      ];
+    },
     totalQuantity() {
-      console.log('Вычисление totalQuantity');
-      var sum = 0;
-      
-      for (var i = 0; i < this.columns.length; i++) {
-        var item = this.columns[i];
-        var value = parseFloat(item.quantity) || 0;
-        console.log(`Элемент ${i + 1}: quantity = ${item.quantity}, преобразовано в: ${value}`);
-        sum += value;
-        console.log(`Текущая сумма: ${sum}`);
+      let sum = 0;
+      for (let i = 0; i < this.columns.length; i++) {
+        sum += parseFloat(this.columns[i].quantity) || 0;
       }
-      
-      console.log(`Итоговая сумма quantity: ${sum}`);
       return sum;
     },
-    
     totalMonthlyConsumption() {
-      console.log('Вычисление totalMonthlyConsumption');
-      var sum = 0;
-      
-      for (var i = 0; i < this.columns.length; i++) {
-        var item = this.columns[i];
-        var value = parseFloat(item.monthlyConsumption) || 0;
-        console.log(`Элемент ${i + 1}: monthlyConsumption = ${item.monthlyConsumption}, преобразовано в: ${value}`);
-        sum += value;
-        console.log(`Текущая сумма: ${sum}`);
+      let sum = 0;
+      for (let i = 0; i < this.columns.length; i++) {
+        sum += parseFloat(this.columns[i].monthlyConsumption) || 0;
       }
-      
-      console.log(`Итоговая сумма monthlyConsumption: ${sum}`);
       return sum;
     },
-    
     totalYearlyConsumption() {
-      console.log('Вычисление totalYearlyConsumption');
-      var sum = 0;
-      
-      for (var i = 0; i < this.columns.length; i++) {
-        var item = this.columns[i];
-        var value = parseFloat(item.yearlyConsumption) || 0;
-        console.log(`Элемент ${i + 1}: yearlyConsumption = ${item.yearlyConsumption}, преобразовано в: ${value}`);
-        sum += value;
-        console.log(`Текущая сумма: ${sum}`);
+      let sum = 0;
+      for (let i = 0; i < this.columns.length; i++) {
+        sum += parseFloat(this.columns[i].yearlyConsumption) || 0;
       }
-      
-      console.log(`Итоговая сумма yearlyConsumption: ${sum}`);
       return sum;
     },
-    
     totalMonthlyPrice() {
-      console.log('Вычисление totalMonthlyPrice');
-      var sum = 0;
-      
-      for (var i = 0; i < this.columns.length; i++) {
-        var item = this.columns[i];
-        var value = parseFloat(item.monthlyPrice) || 0;
-        console.log(`Элемент ${i + 1}: monthlyPrice = ${item.monthlyPrice}, преобразовано в: ${value}`);
-        sum += value;
-        console.log(`Текущая сумма: ${sum}`);
+      let sum = 0;
+      for (let i = 0; i < this.columns.length; i++) {
+        sum += parseFloat(this.columns[i].monthlyPrice) || 0;
       }
-      
-      console.log(`Итоговая сумма monthlyPrice: ${sum}`);
       return sum;
     },
-    
     totalYearlyPrice() {
-      console.log('Вычисление totalYearlyPrice');
-      var sum = 0;
-      
-      for (var i = 0; i < this.columns.length; i++) {
-        var item = this.columns[i];
-        var value = parseFloat(item.yearlyPrice) || 0;
-        console.log(`Элемент ${i + 1}: yearlyPrice = ${item.yearlyPrice}, преобразовано в: ${value}`);
-        sum += value;
-        console.log(`Текущая сумма: ${sum}`);
+      let sum = 0;
+      for (let i = 0; i < this.columns.length; i++) {
+        sum += parseFloat(this.columns[i].yearlyPrice) || 0;
       }
-      
-      console.log(`Итоговая сумма yearlyPrice: ${sum}`);
       return sum;
+    },
+    summaryData() {
+      return [
+        {
+          icon: '📦',
+          title: 'Всего материалов',
+          value: this.columns.length,
+          unit: 'шт'
+        },
+        {
+          icon: '💰',
+          title: 'Общая стоимость',
+          value: this.totalYearlyPrice,
+          unit: '₽'
+        },
+        {
+          icon: '📈',
+          title: 'Средний расход',
+          value: this.columns.length > 0 ? this.totalMonthlyConsumption / this.columns.length : 0,
+          unit: 'ед/мес'
+        }
+      ];
     }
   },
   methods: {
     async fetchItems() {
-      console.log('Начало загрузки данных...');
       try {
         const response = await axios.get('http://localhost:5000/api/data');
-        console.log('Данные успешно получены:', response.data);
         this.columns = response.data;
-        console.log('Количество загруженных элементов:', this.columns.length);
-        
-        // Логируем все элементы для отладки
-        for (var i = 0; i < this.columns.length; i++) {
-          var item = this.columns[i];
-          console.log(`Элемент ${i + 1}:`, item);
-        }
+        this.updateTimestamp();
       } catch (error) {
         console.error('Ошибка при получении данных:', error);
-        console.error('Детали ошибки:', error.response ? error.response.data : 'Нет ответа от сервера');
       }
     },
-    
     async addItem() {
-      console.log('Добавление нового элемента...');
-      console.log('Данные для отправки:', this.newItem);
-      
       try {
-        // Преобразуем числовые поля перед отправкой
         const itemToSend = { ...this.newItem };
-        console.log('Копия данных перед преобразованием:', itemToSend);
-        
-        // Преобразуем строки в числа для вычислений на сервере
         const numericFields = ['quantity', 'monthlyConsumption', 'yearlyConsumption', 'monthlyPrice', 'yearlyPrice'];
         
-        for (var i = 0; i < numericFields.length; i++) {
-          var field = numericFields[i];
+        for (let i = 0; i < numericFields.length; i++) {
+          const field = numericFields[i];
           if (itemToSend[field]) {
-            var originalValue = itemToSend[field];
             itemToSend[field] = parseFloat(itemToSend[field]) || 0;
-            console.log(`Преобразование поля ${field}: "${originalValue}" -> ${itemToSend[field]}`);
           }
         }
         
-        console.log('Данные после преобразования для отправки:', itemToSend);
-        
         await axios.post('http://localhost:5000/api/data', itemToSend);
-        console.log('Элемент успешно добавлен на сервер');
-        
-        this.fetchItems(); // Обновляем данные после добавления
-        this.resetForm(); // Очищаем форму
-        
-        console.log('Форма сброшена, данные обновлены');
+        this.fetchItems();
+        this.resetForm();
       } catch (error) {
         console.error('Ошибка при добавлении элемента:', error);
-        console.error('Детали ошибки:', error.response ? error.response.data : 'Нет ответа от сервера');
       }
     },
-    
     resetForm() {
-      console.log('Сброс формы...');
-      // Используем классический цикл for для сброса всех полей формы
       const fields = ['number', 'name', 'quantity', 'monthlyConsumption', 'yearlyConsumption', 'monthlyPrice', 'yearlyPrice', 'note'];
-      
-      for (var i = 0; i < fields.length; i++) {
-        var field = fields[i];
-        console.log(`Сброс поля ${field}: "${this.newItem[field]}" -> ""`);
-        this.newItem[field] = '';
+      for (let i = 0; i < fields.length; i++) {
+        this.newItem[fields[i]] = '';
       }
-      
-      console.log('Форма сброшена:', this.newItem);
     },
-    
     async deleteItem(itemNumber) {
-      console.log(`Попытка удаления элемента №${itemNumber}`);
-      if (confirm(`Вы уверены, что хотите удалить элемент №${itemNumber}?`)) {
+      if (confirm(`Удалить материал №${itemNumber}?`)) {
         try {
-          console.log(`Отправка запроса на удаление элемента №${itemNumber}`);
           await axios.delete(`http://localhost:5000/api/data/${itemNumber}`);
-          console.log(`Элемент №${itemNumber} успешно удален`);
           this.fetchItems();
         } catch (error) {
           console.error('Ошибка при удалении элемента:', error);
-          console.error('Детали ошибки:', error.response ? error.response.data : 'Нет ответа от сервера');
         }
-      } else {
-        console.log('Удаление отменено пользователем');
       }
+    },
+    updateTimestamp() {
+      const now = new Date();
+      this.lastUpdate = now.toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+      });
     }
   },
-  
   mounted() {
-    console.log('Компонент смонтирован, начинаем загрузку данных');
     this.fetchItems();
-  },
-  
-  watch: {
-    // Наблюдаем за изменениями в данных для отладки
-    columns: {
-      handler(newVal) {
-        console.log('Данные таблицы изменены:', newVal);
-        console.log('Количество элементов:', newVal.length);
-      },
-      deep: true
-    },
-    
-    // Наблюдаем за изменениями в итоговых суммах
-    totalQuantity(newVal) {
-      console.log('totalQuantity изменилось:', newVal);
-    },
-    
-    totalMonthlyPrice(newVal) {
-      console.log('totalMonthlyPrice изменилось:', newVal);
-    },
-    
-    totalYearlyPrice(newVal) {
-      console.log('totalYearlyPrice изменилось:', newVal);
-    }
   }
 };
 </script>
 
 <style scoped>
-/* Стили остаются без изменений */
-.add-item-form {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  background-color: #f5f5f5;
-  border-radius: 8px;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group label {
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-.form-group input {
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-button {
-  grid-column: span 2;
-  padding: 10px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-button:hover {
-  background-color: #45a049;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-th, td {
-  border: 1px solid #ddd;
-  padding: 12px;
-  text-align: left;
-}
-
-th {
-  background-color: #4CAF50;
-  color: white;
-}
-
-tr:nth-child(even) {
-  background-color: #f2f2f2;
-}
-
-.delete-button {
-  padding: 5px 10px;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.delete-button:hover {
-  background-color: #d32f2f;
-}
-
-tfoot tr {
-  background-color: #e8f5e8;
-  font-weight: bold;
-}
-
-tfoot th:nth-child(n+3):nth-child(-n+7) {
-  text-align: right;
-  font-weight: bold;
-}
-</style>
-
-<style scoped>
-/* Стили остаются без изменений */
-.add-item-form {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  background-color: #f5f5f5;
-  border-radius: 8px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group label {
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-.form-group input {
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-button {
-  grid-column: span 2;
-  padding: 10px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-button:hover {
-  background-color: #45a049;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-th, td {
-  border: 1px solid #ddd;
-  padding: 12px;
-  text-align: left;
-}
-
-th {
-  background-color: #4CAF50;
-  color: white;
-}
-
-tr:nth-child(even) {
-  background-color: #f2f2f2;
-}
-
-.delete-button {
-  padding: 5px 10px;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.delete-button:hover {
-  background-color: #d32f2f;
-}
-
-tfoot tr {
-  background-color: #e8f5e8;
-  font-weight: bold;
-}
-
-tfoot th:nth-child(n+3):nth-child(-n+7) {
-  text-align: right;
-  font-weight: bold;
-}
-</style>
-
-<style scoped>
-/* Опционально: добавьте форматирование для чисел */
-tfoot th:nth-child(n+3):nth-child(-n+7) {
-  text-align: right;
-  font-weight: bold;
-}
-</style>
-
-<style>
-/* Ваши существующие стили */
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
-table {
-  width: 90%;
-  margin: 0 auto;
-  border-collapse: collapse;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  font-size: 16px;
-  background-color: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-top: 20px; /* Отступ от формы */
-}
-caption {
-  caption-side: top;
-  margin-bottom: 15px;
-  font-size: 1.5em;
-  font-weight: 600;
-  color: #2c3e50;
-}
-thead {
-  background-color: #1ccefb;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-thead th {
-  padding: 12px 15px;
-  border-right: 1px solid rgba(255, 255, 255, 0.3);
-}
-thead th:last-child {
-  border-right: none;
-}
-tbody tr:nth-child(even) {
-  background-color: #f4f7fc;
-}
-tbody td {
-  padding: 12px 15px;
-  border-bottom: 1px solid #e1e8f0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   color: #333;
-  text-align: center;
-}
-tbody td:first-child,
-tbody td:nth-child(2) {
-  text-align: left;
-  padding-left: 20px;
-}
-tbody tr:hover {
-  background-color: #dbeeff;
-  cursor: pointer;
-}
-tfoot {
-  background-color: #eaf1fb;
-  font-weight: 600;
-  color: #2c3e50;
-}
-tfoot th {
-  padding: 12px 15px;
-  border-top: 2px solid #48dffa;
-  text-align: center;
-}
-tfoot th:first-child {
-  text-align: left;
-  padding-left: 20px;
+  padding: 20px;
 }
 
-/* Стили для новой формы */
-.add-item-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  max-width: 90%;
-  margin: 20px auto;
+.app-header {
+  text-align: center;
+  color: rgb(255, 255, 255);
+  margin-bottom: 40px;
   padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.app-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  background: linear-gradient(45deg, #ffffff, #f0f0f0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  font-weight: 300;
+}
+
+.app-main {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.section-header h2 {
+  color: rgb(29, 1, 166);
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.section-icon {
+  font-size: 1.5rem;
+  opacity: 0.8;
+}
+
+.form-section, .table-section {
+  background: rgb(213, 243, 255);
+  border-radius: 20px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.add-form {
+  margin-top: 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  text-align: left;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
 }
 
 .form-group label {
-  margin-bottom: 5px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-input {
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: #f8f9fa;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #4a18ff;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.btn-icon {
+  font-size: 1.2rem;
+}
+
+.table-container {
+  overflow-x: auto;
+  border-radius: 15px;
+  border: 1px solid #e1e5e9;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-header {
+  padding: 18px 20px;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  background: #f8f9fa;
+  border-bottom: 2px solid #e1e5e9;
+  white-space: nowrap;
+}
+
+.header-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-row {
+  transition: all 0.2s ease;
+}
+
+.table-row:hover {
+  background: #f0f4ff;
+}
+
+.table-cell {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e1e5e9;
+  color: #444;
+}
+
+.cell-content {
+  display: inline-block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions-cell {
+  white-space: nowrap;
+}
+
+.delete-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #a50000 0%, #ff0d00 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
   font-weight: 500;
-  color: #333;
-}
-
-.form-group input {
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 1em;
-}
-
-.add-item-form button {
-  grid-column: 1 / -1; /* Кнопка занимает всю ширину */
-  padding: 10px 20px;
-  background-color: #28a745;
-  color: white;
-  border: none;
-  border-radius: 5px;
   cursor: pointer;
-  font-size: 1.1em;
-  transition: background-color 0.2s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
 }
 
-.add-item-form button:hover {
-  background-color: #01beee;
+.delete-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
 }
 
-.delete-button {
-  background-color: #dc3545;
+.empty-row {
+  text-align: center;
+}
+
+.empty-cell {
+  padding: 60px 20px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  color: #598aee;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.table-footer {
+  background: linear-gradient(135deg, #667eea 0%, #74eaff 100%);
+}
+
+.footer-label, .footer-total, .footer-empty {
+  padding: 20px;
+  color: rgb(255, 255, 255);
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.footer-total {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.summary-card {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-radius: 15px;
+  padding: 25px;
   color: white;
-  border: none;
-  padding: 5px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9em;
-  transition: background-color 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: all 0.3s ease;
 }
 
-.delete-button:hover {
-  background-color: #c82333;
+.summary-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+.summary-card:nth-child(2) {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.summary-card:nth-child(3) {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.card-icon {
+  font-size: 2.5rem;
+  opacity: 0.9;
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  opacity: 0.9;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.card-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+}
+
+.app-footer {
+  text-align: center;
+  color: white;
+  padding: 20px;
+  margin-top: 40px;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.timestamp {
+  margin-top: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .app-header h1 {
+    font-size: 2rem;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-container {
+    font-size: 0.9rem;
+  }
+  
+  .table-cell, .table-header {
+    padding: 12px 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  #app {
+    padding: 10px;
+  }
+  
+  .form-section, .table-section {
+    padding: 20px;
+  }
+  
+  .section-header h2 {
+    font-size: 1.5rem;
+  }
 }
 </style>
