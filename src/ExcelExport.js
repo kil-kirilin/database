@@ -11,13 +11,11 @@ export const exportToExcel = (data, filename = 'export.xlsx') => {
   
   // Добавляем лист в книгу
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Данные');
-  
   // Генерируем Excel файл
   const excelBuffer = XLSX.write(workbook, { 
     bookType: 'xlsx', 
     type: 'array' 
   });
-  
   // Создаем Blob и сохраняем файл
   const dataBlob = new Blob([excelBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
